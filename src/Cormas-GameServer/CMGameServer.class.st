@@ -29,14 +29,51 @@ CMGameServer >> log: anObject [
 
 { #category : 'accessing' }
 CMGameServer >> start [
-	"Start the server on localhost:8765 with a WebSocket at /ws.
+	"Start the server on localhost:8080 with a WebSocket at /ws.
 	Only one client is allowed at a time."
 	| allowed |
 	
 	server ifNotNil: [ self error: 'Already running!' ].
 	
-	server := ZnServer startOn: 8765.
-	self log: 'Started a server at localhost:8765'.
+	server := ZnServer startOn: 8080.
+	self log: 'Started a server at localhost:8080'.
+	
+	server delegate: (ZnWebSocketDelegate
+		map: '/ws'
+		to: [ :ws | 
+			allowed := false.
+			
+			mutex critical: [ 
+				(socket isNil or: [ socket isConnected not ]) ifTrue: [ 
+					socket := ws.
+					allowed := true ] ].
+			
+			allowed ifFalse: [ 
+				[ ws sendMessage: 'Server is busy. Only one client allowed' ] onErrorDo: [ :e | self log: e ].
+				ws close.
+				^ self ].
+			
+			self log: 'Client connected'.
+			
+			[ 
+				[ ws isConnected ] whileTrue: [ 
+					whenDataReceivedBlock value: (STONJSON fromString: ws readMessage) ]
+			] ensure: [ 
+				self log: 'Client disconnected'.
+				mutex critical: [ socket := nil ] ] ])
+	
+]
+
+{ #category : 'accessing' }
+CMGameServer >> startOn: aPortNumber [
+	"Start the server on localhost:<aPortNumber> with a WebSocket at /ws.
+	Only one client is allowed at a time."
+	| allowed |
+	
+	server ifNotNil: [ self error: 'Already running!' ].
+	
+	server := ZnServer startOn: aPortNumber.
+	self log: ('Started a server at localhost:', aPortNumber asString).
 	
 	server delegate: (ZnWebSocketDelegate
 		map: '/ws'
