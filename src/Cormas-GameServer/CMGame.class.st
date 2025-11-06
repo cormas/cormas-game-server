@@ -31,8 +31,14 @@ CMGame >> initializeGame [
 
 	server startOn: portNumber.
 	
-	server whenDataReceivedDo: [ :dict |
-		cormasModel respondToClient: dict ].
+	"server whenDataReceivedDo: [ :dict :clientId |
+		cormasModel respondToClient: dict ]."
+]
+
+{ #category : 'accessing' }
+CMGame >> portNumber: aNumber [
+
+	portNumber := aNumber
 ]
 
 { #category : 'as yet unclassified' }
