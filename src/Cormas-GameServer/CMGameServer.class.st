@@ -14,6 +14,98 @@ Class {
 }
 
 { #category : 'as yet unclassified' }
+CMGameServer class >> loginPageHtml [
+
+	^ '<!doctype html>
+<html lang="en">
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Game Login</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 560px; margin: 6rem auto; padding: 0 1rem }
+  form { display: flex; gap: .5rem }
+  input[type=text]{ flex:1; padding:.6rem .8rem; font-size:1rem }
+  button{ padding:.6rem 1rem; font-size:1rem; cursor:pointer }
+  .error{ color:#b00020; margin-top:.75rem }
+  .ok{ color:#006400; margin-top:.75rem }
+  pre{ background:#f6f6f6; padding:.75rem; overflow:auto }
+</style>
+<h1>Choose your name to join</h1>
+
+<form id="login">
+  <input id="name" type="text" placeholder="e.g. alice" required minlength="2" maxlength="24" />
+  <button type="submit">Join</button>
+</form>
+
+<div id="msg"></div>
+<pre id="log" hidden></pre>
+
+<script>
+const byId = id => document.getElementById(id);
+const nameInput = byId(''name'');
+const msg = byId(''msg'');
+const log = byId(''log'');
+
+nameInput.value = localStorage.getItem(''cm.name'') || '''';
+
+function show(kind, text){
+  msg.className = kind;
+  msg.textContent = text;
+}
+
+function addLog(x){
+  log.hidden = false;
+  log.textContent += x + "\n";
+}
+
+let ws = null;
+
+byId(''login'').addEventListener(''submit'', (e) => {
+  e.preventDefault();
+  const name = nameInput.value.trim();
+  if(!name){ show(''error'', ''Please enter a name''); return; }
+
+  const proto = location.protocol === ''https:'' ? ''wss'' : ''ws'';
+  const url = `${proto}://${location.host}/ws`;
+  ws = new WebSocket(url);
+
+  ws.addEventListener(''open'', () => {
+    ws.send(JSON.stringify({ type: ''hello'', id: name }));
+  });
+
+  ws.addEventListener(''message'', (ev) => {
+    try {
+      const msgObj = JSON.parse(ev.data);
+      if(msgObj.type === ''welcome''){
+        localStorage.setItem(''cm.name'', msgObj.id);
+        show(''ok'', `Welcome, ${msgObj.id}! Connected.`);
+        addLog(''CONNECTED as '' + msgObj.id);
+      } else if(msgObj.type === ''rejected'' && msgObj.reason === ''name-taken''){
+        show(''error'', ''This name is already taken. Choose another.'');
+        ws.close();
+      } else if(msgObj.type === ''error''){
+        show(''error'', ''Error: '' + (msgObj.reason || ''unknown''));
+      } else {
+        addLog(''<< '' + ev.data);
+      }
+    } catch(err) {
+      addLog(''<< '' + ev.data);
+    }
+  });
+
+  ws.addEventListener(''close'', () => {
+    addLog(''DISCONNECTED'');
+  });
+
+  ws.addEventListener(''error'', () => {
+    show(''error'', ''Connection error'');
+  });
+});
+</script>
+</html>'
+]
+
+{ #category : 'as yet unclassified' }
 CMGameServer >> broadcast: aDictionaryOrString [
 
 	| message |
@@ -101,6 +193,15 @@ CMGameServer >> handleWebSocket: ws [
 		 [ whenClientDisconnectedBlock value: clientId ] onErrorDo: [ :e | self log: e ] ]
 ]
 
+{ #category : 'as yet unclassified' }
+CMGameServer >> htmlFrom: aFileName [
+
+	| dir |
+	dir := './pharo-local/iceberg/cormas/cormas-game-server/html' asFileReference.
+	
+	^ (dir / aFileName) contents
+]
+
 { #category : 'initialization' }
 CMGameServer >> initialize [
 
@@ -142,39 +243,23 @@ CMGameServer >> send: aDictionaryOrString toClient: aClientId [
 { #category : 'accessing' }
 CMGameServer >> startOn: aPortNumber [
 	"Start HTTP server with a WebSocket endpoint at /ws."
+	| wsDelegate dispatcher |
 	server ifNotNil: [ self error: 'Already running!' ].
+	
+	dispatcher := ZnDispatcherDelegate new.
+	
+	wsDelegate := ZnWebSocketDelegate map: '/' to: [ :ws | self handleWebSocket: ws ].
+	
+	dispatcher map: '/ws' to: [ :request :response |
+		wsDelegate handleRequest: request ].
+	
+	dispatcher map: '/' to: [ :request :response |
+		response entity: (ZnEntity html: (self htmlFrom: 'login.html')) ].
 	
 	server := ZnServer startOn: aPortNumber.
 	self log: ('Started a server at localhost:', aPortNumber asString).
-
-	server delegate: (ZnWebSocketDelegate
-		map: '/ws'
-		to: [ :ws | self handleWebSocket: ws ]).
 	
-	"server delegate: (ZnWebSocketDelegate
-		map: '/ws'
-		to: [ :ws | 
-			allowed := false.
-			
-			mutex critical: [ 
-				(socket isNil or: [ socket isConnected not ]) ifTrue: [ 
-					socket := ws.
-					allowed := true ] ].
-			
-			allowed ifFalse: [ 
-				[ ws sendMessage: 'Server is busy. Only one client allowed' ] onErrorDo: [ :e | self log: e ].
-				ws close.
-				^ self ].
-			
-			self log: 'Client connected'.
-			
-			[ 
-				[ ws isConnected ] whileTrue: [ 
-					whenDataReceivedBlock value: (STONJSON fromString: ws readMessage) ]
-			] ensure: [ 
-				self log: 'Client disconnected'.
-				mutex critical: [ socket := nil ] ] ])"
-	
+	server delegate: dispatcher.
 ]
 
 { #category : 'accessing' }
