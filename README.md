@@ -28,7 +28,7 @@ server startOn: 8082.
 spacePresenter := CMSpacePresenter allInstances last.
 model := spacePresenter cormasModel.
 
-server whenDataReceivedDo: [ :data |
+server whenDataReceivedDo: [ :data :clientId |
 	| occupiedCellIds harvesters |
 	
 	occupiedCellIds := data at: 'occupiedCells'.
