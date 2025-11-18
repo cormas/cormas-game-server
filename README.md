@@ -16,7 +16,13 @@ Metacello new
     onUpgrade: [ :e | e useIncoming ];
     onWarning: [ :e | e load ];
     ignoreImage;
-    load
+    load.
+
+"Load the Planet C model for the demonstration purposes"
+Metacello new
+      baseline: 'PlanetC';
+      repository: 'github://cormas/planetc-model:main';
+      load
 ```
 
 Example:
