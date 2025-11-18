@@ -53,7 +53,6 @@ server stop.
 Python client:
 
 ```py
-# client.py
 # pip install websockets
 
 import asyncio
@@ -69,13 +68,16 @@ async def run_client():
 	async with websockets.connect(uri) as websocket:
 		print('Connected to server')
 
+		# A required handshake message (optional id param to reconnect)
+		await websocket.send(json.dumps({'type': 'bonjour'}))
+
 		while True:
 			# Example: {'occupiedCells': [1, 4, 7, 13]}
 			data = {'occupiedCells': simulate_input()}
 			print(data)
 
 			await websocket.send(json.dumps(data))
-			await asyncio.sleep(0.1)
+			await asyncio.sleep(0.5)
 
 
 if __name__ == '__main__':
