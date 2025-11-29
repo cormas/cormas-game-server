@@ -112,9 +112,27 @@ CMGameServer >> broadcast: aDictionaryOrString [
 	message := self toJSONString: aDictionaryOrString.
 	
 	mutex critical: [ 
-		clients keysAndValuesDo: [ :clientId :ws |
-			[ ws sendMessage: message ] onErrorDo: [ :e |
-				self log: ('Broadcast error to ', clientId asString, ': ', e printString) ] ] ]
+		clients do: [ :client | 
+			[ client webSocket sendMessage: message ] onErrorDo: [ :e |
+				self log: ('Broadcast error to ', client id asString, ': ', e printString) ] ] ]
+]
+
+{ #category : 'as yet unclassified' }
+CMGameServer >> clientAtId: aClientId [
+
+	^ clients detect: [ :each | each id = aClientId ]
+]
+
+{ #category : 'as yet unclassified' }
+CMGameServer >> clientAtId: aClientId ifAbsent: aBlock [
+
+	^ clients detect: [ :each | each id = aClientId ] ifNone: aBlock
+]
+
+{ #category : 'as yet unclassified' }
+CMGameServer >> clientAtId: aClientId ifPresent: aBlock [
+
+	^ clients detect: [ :each | each id = aClientId ] ifFound: aBlock
 ]
 
 { #category : 'as yet unclassified' }
@@ -146,33 +164,38 @@ CMGameServer >> clientIdFrom: ws ifAbsent: anAbsentBlock [
 	
 ]
 
+{ #category : 'accessing' }
+CMGameServer >> clients [
+
+	^ clients
+]
+
 { #category : 'as yet unclassified' }
 CMGameServer >> closeAllClients [
 	mutex critical: [ 
-		clients valuesDo: [ :ws | [ ws close ] onErrorDo: [ :e | self log: e ] ].
+		clients do: [ :client | [ client webSocket close ] onErrorDo: [ :e | self log: e ] ].
 		clients removeAll ]
 ]
 
 { #category : 'as yet unclassified' }
-CMGameServer >> connectedClientIds [
-
-	^ mutex critical: [ clients keys asArray ]
-]
-
-{ #category : 'as yet unclassified' }
 CMGameServer >> handleWebSocket: ws [
-	| clientId |
+	| clientId newClient |
 	clientId := self clientIdFrom: ws ifAbsent: [ UUID new asString ].
 	
 	"Register or replace existing socket for this clientId"
 	mutex critical: [ 
-		clients at: clientId ifPresent: [ :previousSocket |
+		self clientAtId: clientId ifPresent: [ :previousSocket |
 			[ previousSocket close ] onErrorDo: [ :e |
 				self log: 'Error closing previous socket for ', clientId asString, ': ', e printString ] ].
 		
-		clients at: clientId put: ws ].
+		newClient := CMGameClient new
+			id: clientId;
+			webSocket: ws;
+			yourself.
+			
+		clients add: newClient ].
 	
-	[ whenClientConnectedBlock value: clientId ] onErrorDo: [ :e | self log: e ].
+	[ whenClientConnectedBlock value: newClient ] onErrorDo: [ :e | self log: e ].
 
 	"Main read loop for this connection"
 	[ 
@@ -183,14 +206,16 @@ CMGameServer >> handleWebSocket: ws [
 				self log: ('Bad JSON from ', clientId asString, ': ', e printString).
 				nil ].
 			
-			data ifNotNil: [ whenDataReceivedBlock value: data value: clientId ] ]
+			data ifNotNil: [
+				| client |
+				client := self clientAtId: clientId.
+				whenDataReceivedBlock value: data value: client ] ]
 	] ensure: [ 
 		"Unregister only if this ws is still the current one for clientId (avoid racing with a fast reconnection)"
 		mutex critical: [ 
-			(clients at: clientId ifAbsent: [ nil ]) == ws ifTrue: [ 
-				clients removeKey: clientId ifAbsent: [ "do nothing" ] ] ].
-		
-		 [ whenClientDisconnectedBlock value: clientId ] onErrorDo: [ :e | self log: e ] ]
+			self clientAtId: clientId ifPresent: [ :client |
+				clients remove: client.
+				[ whenClientDisconnectedBlock value: client ] onErrorDo: [ :e | self log: e ] ] ] ]
 ]
 
 { #category : 'as yet unclassified' }
@@ -207,12 +232,12 @@ CMGameServer >> initialize [
 
 	super initialize.
 	mutex := Mutex new.
-	clients := Dictionary new.
+	clients := OrderedCollection new.
 	
 	"Use setter method to replace this block with a custom callback to process the game input"
-	whenDataReceivedBlock := [ :data :clientId | self log: ('[',  clientId asString, '] :', data asString) ].
-	whenClientConnectedBlock := [ :clientId | self log: ('Client connected: ', clientId asString) ].
-	whenClientDisconnectedBlock := [ :clientId | self log: ('Client disconnected: ', clientId asString) ].
+	whenDataReceivedBlock := [ :data :client | self log: ('[',  client id asString, '] :', data asString) ].
+	whenClientConnectedBlock := [ :client | self log: ('Client connected: ', client id asString) ].
+	whenClientDisconnectedBlock := [ :client | self log: ('Client disconnected: ', client id asString) ].
 ]
 
 { #category : 'testing' }
@@ -245,7 +270,7 @@ CMGameServer >> send: aDictionaryOrString toClient: aClientId [
 	| message socket |
 	message := self toJSONString: aDictionaryOrString.
 	
-	socket := clients at: aClientId ifAbsent: [ 
+	socket := self clientAtId: aClientId ifAbsent: [ 
 		^ self log: ('No such client: ', aClientId) ].
 	
 	[ socket sendMessage: message ] onErrorDo: [ :e |
@@ -290,18 +315,18 @@ CMGameServer >> toJSONString: anObject [
 
 { #category : 'enumerating' }
 CMGameServer >> whenClientConnectedDo: aBlock [
-	"aBlock: [ :clientId | ... ]"
+	"aBlock: [ :client | ... ]"
 	whenClientConnectedBlock := aBlock
 ]
 
 { #category : 'enumerating' }
 CMGameServer >> whenClientDisconnectedDo: aBlock [
-	"aBlock: [ :clientId | ... ]"
+	"aBlock: [ :client | ... ]"
 	whenClientDisconnectedBlock := aBlock
 ]
 
 { #category : 'enumerating' }
 CMGameServer >> whenDataReceivedDo: aBlock [
-	"aBlock: [ :data :clientId | ... ]"
+	"aBlock: [ :data :client | ... ]"
 	whenDataReceivedBlock := aBlock
 ]

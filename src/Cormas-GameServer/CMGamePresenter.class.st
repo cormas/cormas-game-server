@@ -1,78 +1,60 @@
 Class {
 	#name : 'CMGamePresenter',
-	#superclass : 'SpPresenter',
-	#instVars : [
-		'translator',
-		'modelClass',
-		'initializer',
-		'simulationRunner'
-	],
+	#superclass : 'CMSimulationPresenter',
 	#category : 'Cormas-GameServer',
 	#package : 'Cormas-GameServer'
 }
 
 { #category : 'examples' }
-CMGamePresenter class >> example [
-	<example>
-	(self forModelClass: CMMockModel translator: CMEnglishTranslator new) open
-]
-
-{ #category : 'instance creation' }
-CMGamePresenter class >> forModelClass: aClass translator: aTranslator [
-
-	^ self on: { aClass . aTranslator }
+CMGamePresenter >> example [
+	<script: 'self example'>
 ]
 
 { #category : 'as yet unclassified' }
-CMGamePresenter >> beInNotRunningMode [
-
-	"do nothing"
+CMGamePresenter >> game [
+	"Game can be seen as a simulation... bla bla bla
+	And game is a subclass of simulation
+	So we use the same variable here"
+	^ simulation
 ]
 
-{ #category : 'initialization' }
-CMGamePresenter >> connectPresenters [
+{ #category : 'instance creation' }
+CMGamePresenter >> initializeSimulationInit: anInitSelector control: aControlSelector [
+	"TODO: For now, we duplicate this method only to change the CMSimulation class to CMGame class. But later we should refactor it to move other parts like parameter or random seed initialization into other methods and reduce duplication"
+	simulation := CMGame for: modelClass.
 
-	initializer
-		whenInitializedDo: [ simulationRunner simulation: initializer simulation ];
-		beReinitializeCondition: [ simulationRunner hasSimulationData ].
-]
+	modelClass parameters do: [ :parameter |
+		simulation initialParameterValues at: parameter put: parameter value ].
 
-{ #category : 'layout' }
-CMGamePresenter >> defaultLayout [
-
-	^ SpBoxLayout newLeftToRight
-		spacing: 10;
-		add: initializer width: 250;
-		add: simulationRunner;
-		yourself
-]
-
-{ #category : 'initialization' }
-CMGamePresenter >> initializePresenters [
-	
-	initializer := self
-		instantiate: CMSimulationInitializerPresenter
-		on: { modelClass . translator }.
+	simulation
+		activeInitSelector: anInitSelector;
+		activeControlSelector: aControlSelector.
 		
-	simulationRunner := self
-		instantiate: CMSimulationRunnerPresenter
-		on: translator.
+	simulation stopWhen: stopConditionPresenter condition.
+		
+	self flag: 'TODO'.
+	
+	"modelInitializationSettings isFixRandomSeed ifTrue: [ 
+		simulation randomSeed: modelInitializationSettings randomSeed.
+		simulation shouldReleaseRandomSeedAfterInitialization:
+			modelInitializationSettings isReleaseRandomSeedAfterInitialization ]."
+		
+	simulation initializeSimulation.
+	simulationRunner simulation: simulation
 ]
 
 { #category : 'initialization' }
-CMGamePresenter >> initializeWindow: aWindowPresenter [
+CMGamePresenter >> presenterWindowTitle [
 
-	super initializeWindow: aWindowPresenter.
-
-	aWindowPresenter 
-		title: (modelClass modelName, ' - Game');
-		initialExtent: 1000@600;
-		whenResizingDo: [ simulationRunner fitDiagram ].
+	^ modelClass modelName, ' - Game'
 ]
 
-{ #category : 'accessing - model' }
-CMGamePresenter >> setModelBeforeInitialization: aCollection [
-
-	modelClass := aCollection first.
-	translator := aCollection second
+{ #category : 'as yet unclassified' }
+CMGamePresenter >> settingsGameServer [
+	<fancyNotebookPageOrder: 10>
+	
+	^ SpNotebookPage
+		title: 'Game server'
+		icon: (self iconNamed: #remote)
+		provider: [ self instantiate: CMGameInitializerPresenter on: self game server ]
 ]

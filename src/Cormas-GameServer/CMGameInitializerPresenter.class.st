@@ -58,6 +58,9 @@ CMGameInitializerPresenter >> beInDisconnectedMode [
 { #category : 'initialization' }
 CMGameInitializerPresenter >> connectPresenters [
 
+	server whenClientConnectedDo: [ :client | self showConnectedClients ].
+	server whenClientDisconnectedDo: [ :client | self showConnectedClients ].
+
 	inspectServerButton action: [ server inspect ].
 ]
 
@@ -114,7 +117,16 @@ CMGameInitializerPresenter >> initializePresenters [
 		number: self class defaultPortNumber;
 		yourself.
 		
-	connectedClientsTable := self newTable.
+	connectedClientsTable := self newTable
+		addColumn: (SpImageTableColumn new
+			width: 20;
+			evaluated: [ :client | self iconNamed: #testGreen ];
+			beNotExpandable;
+			yourself);
+		addColumn: (SpStringTableColumn
+			title: 'ID'
+			evaluated: [ :client | client id ]);
+		yourself.
 	
 	statusLabel := self newLabel.
 	connectButton := self newButton.
@@ -131,6 +143,12 @@ CMGameInitializerPresenter >> initializePresenters [
 CMGameInitializerPresenter >> setModelBeforeInitialization: aServer [
 
 	server := aServer
+]
+
+{ #category : 'as yet unclassified' }
+CMGameInitializerPresenter >> showConnectedClients [
+
+	connectedClientsTable items: server clients
 ]
 
 { #category : 'as yet unclassified' }
