@@ -2,7 +2,7 @@ Extension { #name : 'CMSimulationPresenter' }
 
 { #category : '*Cormas-GameServer' }
 CMSimulationPresenter >> settingsGameServer [
-	<fancyNotebookPage>
+	<fancyNotebookPageOrder: 10>
 	
 	"TODO: Right now we are creating a new server every time the tab is opened. This should not happen"
 	| server |
