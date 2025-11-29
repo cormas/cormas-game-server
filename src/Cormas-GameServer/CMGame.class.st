@@ -12,7 +12,7 @@ Class {
 { #category : 'as yet unclassified' }
 CMGame >> availableRoles [
 
-	^ cormasModel class projectPackage definedClasses select: [ :each | each isKindOf: CMGameRole ]
+	^ cormasModel class package definedClasses select: [ :each | each inheritsFrom: CMGameRole ]
 ]
 
 { #category : 'initialization' }
