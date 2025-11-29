@@ -5,6 +5,7 @@ Class {
 		'server',
 		'clients',
 		'mutex',
+		'htmlDirectory',
 		'whenDataReceivedBlock',
 		'whenClientConnectedBlock',
 		'whenClientDisconnectedBlock'
@@ -218,13 +219,16 @@ CMGameServer >> handleWebSocket: ws [
 				[ whenClientDisconnectedBlock value: client ] onErrorDo: [ :e | self log: e ] ] ] ]
 ]
 
+{ #category : 'accessing' }
+CMGameServer >> htmlDirectory: aString [
+
+	htmlDirectory := aString
+]
+
 { #category : 'as yet unclassified' }
 CMGameServer >> htmlFrom: aFileName [
 
-	| dir |
-	dir := './pharo-local/iceberg/cormas/cormas-game-server/html' asFileReference.
-	
-	^ (dir / aFileName) contents
+	^ (htmlDirectory asFileReference / aFileName) contents
 ]
 
 { #category : 'initialization' }
@@ -233,6 +237,7 @@ CMGameServer >> initialize [
 	super initialize.
 	mutex := Mutex new.
 	clients := OrderedCollection new.
+	htmlDirectory := 'html/'.
 	
 	"Use setter method to replace this block with a custom callback to process the game input"
 	whenDataReceivedBlock := [ :data :client | self log: ('[',  client id asString, '] :', data asString) ].
