@@ -56,5 +56,5 @@ CMGamePresenter >> settingsGameServer [
 	^ SpNotebookPage
 		title: 'Game server'
 		icon: (self iconNamed: #remote)
-		provider: [ self instantiate: CMGameInitializerPresenter on: self game server ]
+		provider: [ self instantiate: CMGameInitializerPresenter on: self game ]
 ]

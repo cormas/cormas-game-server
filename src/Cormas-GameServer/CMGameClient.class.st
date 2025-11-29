@@ -53,6 +53,12 @@ CMGameClient >> role [
 	^ role
 ]
 
+{ #category : 'accessing' }
+CMGameClient >> role: aRole [ 
+
+	role := aRole
+]
+
 { #category : 'protocol' }
 CMGameClient >> sendMessage: aString [
 

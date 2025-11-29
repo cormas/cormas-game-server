@@ -2,12 +2,13 @@ Class {
 	#name : 'CMGameInitializerPresenter',
 	#superclass : 'SpPresenter',
 	#instVars : [
-		'server',
+		'game',
 		'portNumberInput',
 		'statusLabel',
 		'connectButton',
 		'inspectServerButton',
-		'connectedClientsTable'
+		'connectedClientsTable',
+		'startGameButton'
 	],
 	#category : 'Cormas-GameServer',
 	#package : 'Cormas-GameServer'
@@ -22,7 +23,12 @@ CMGameInitializerPresenter class >> defaultPortNumber [
 { #category : 'examples' }
 CMGameInitializerPresenter class >> example [
 	<example>
-	(self on: CMGameServer new) open
+	| game |
+	game := (CMGame for: CMMockModel)
+		activeInitSelector: #initFixed;
+		initializeGame.
+		
+	(self on: game) open
 ]
 
 { #category : 'as yet unclassified' }
@@ -56,12 +62,42 @@ CMGameInitializerPresenter >> beInDisconnectedMode [
 ]
 
 { #category : 'initialization' }
+CMGameInitializerPresenter >> buildRolesMenu [
+
+	| rolesMenu |
+	
+	rolesMenu := SpMenuPresenter new.
+	
+	game availableRoles do: [ :role |
+		rolesMenu addItem: [ :item | item
+			name: role roleName;
+			action: [
+				connectedClientsTable selectedItem role: role.
+				self update ] ] ].
+
+	^ rolesMenu
+]
+
+{ #category : 'initialization' }
+CMGameInitializerPresenter >> buildTableMenu [
+
+	connectedClientsTable contextMenu: (SpMenuPresenter new 
+		addItem: [ :item | item 
+			name: 'Role'; 
+			subMenu: self buildRolesMenu ];
+		addItem: [ :item | item
+			name: 'Disconnect';
+			action: [ connectedClientsTable selectedItem disconnect ] ]
+		yourself).
+]
+
+{ #category : 'initialization' }
 CMGameInitializerPresenter >> connectPresenters [
 
-	server whenClientConnectedDo: [ :client | self showConnectedClients ].
-	server whenClientDisconnectedDo: [ :client | self showConnectedClients ].
+	game server whenClientConnectedDo: [ :client | self showConnectedClients ].
+	game server whenClientDisconnectedDo: [ :client | self showConnectedClients ].
 
-	inspectServerButton action: [ server inspect ].
+	inspectServerButton action: [ game server inspect ].
 ]
 
 { #category : 'layout' }
@@ -90,6 +126,7 @@ CMGameInitializerPresenter >> defaultLayout [
 			add: 'Connected clients' expand: false;
 			add: connectedClientsTable;
 			yourself);
+		add: startGameButton expand: false;
 		yourself
 ]
 
@@ -101,9 +138,9 @@ CMGameInitializerPresenter >> example [
 { #category : 'initialization' }
 CMGameInitializerPresenter >> initializeFromExistingServer [
 
-	server isRunning
+	game server isRunning
 		ifTrue: [
-			portNumberInput number: server portNumber.
+			portNumberInput number: game server portNumber.
 			self beInConnectedMode.
 			self showConnectedClients ]
 		ifFalse: [
@@ -119,6 +156,7 @@ CMGameInitializerPresenter >> initializePresenters [
 		yourself.
 		
 	connectedClientsTable := self newTable
+		hideColumnHeaders;
 		addColumn: (SpImageTableColumn new
 			width: 20;
 			evaluated: [ :client | self iconNamed: #testGreen ];
@@ -131,6 +169,8 @@ CMGameInitializerPresenter >> initializePresenters [
 			title: 'Role'
 			evaluated: [ :client | client role roleName ]);
 		yourself.
+		
+	self buildTableMenu.
 	
 	statusLabel := self newLabel.
 	connectButton := self newButton.
@@ -140,31 +180,36 @@ CMGameInitializerPresenter >> initializePresenters [
 		icon: (self iconNamed: #smallInspectIt);
 		yourself.
 		
+	startGameButton := self newButton
+		label: 'Start Game';
+		icon: CMIcons playIcon;
+		yourself.
+		
 	self initializeFromExistingServer
 ]
 
 { #category : 'accessing - model' }
-CMGameInitializerPresenter >> setModelBeforeInitialization: aServer [
+CMGameInitializerPresenter >> setModelBeforeInitialization: aGame [
 
-	server := aServer
+	game := aGame
 ]
 
 { #category : 'as yet unclassified' }
 CMGameInitializerPresenter >> showConnectedClients [
 
-	connectedClientsTable items: server clients
+	connectedClientsTable items: game server clients
 ]
 
 { #category : 'as yet unclassified' }
 CMGameInitializerPresenter >> startServer [
 
-	server startOn: portNumberInput number.
+	game server startOn: portNumberInput number.
 	self beInConnectedMode
 ]
 
 { #category : 'as yet unclassified' }
 CMGameInitializerPresenter >> stopServer [
 
-	server stop.
+	game server stop.
 	self beInDisconnectedMode
 ]
