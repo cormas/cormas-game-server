@@ -3,7 +3,8 @@ Class {
 	#superclass : 'Object',
 	#instVars : [
 		'name',
-		'webSocket'
+		'webSocket',
+		'role'
 	],
 	#category : 'Cormas-GameServer',
 	#package : 'Cormas-GameServer'
@@ -13,6 +14,19 @@ Class {
 CMGameClient >> disconnect [
 
 	webSocket close
+]
+
+{ #category : 'testing' }
+CMGameClient >> hasRole [
+
+	^ role isRole
+]
+
+{ #category : 'initialization' }
+CMGameClient >> initialize [
+
+	super initialize.
+	role := CMGameNoRole
 ]
 
 { #category : 'testing' }
@@ -31,6 +45,12 @@ CMGameClient >> name [
 CMGameClient >> name: anObject [
 
 	name := anObject
+]
+
+{ #category : 'accessing' }
+CMGameClient >> role [
+
+	^ role
 ]
 
 { #category : 'protocol' }

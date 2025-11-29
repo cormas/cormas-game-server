@@ -104,7 +104,8 @@ CMGameInitializerPresenter >> initializeFromExistingServer [
 	server isRunning
 		ifTrue: [
 			portNumberInput number: server portNumber.
-			self beInConnectedMode ]
+			self beInConnectedMode.
+			self showConnectedClients ]
 		ifFalse: [
 			portNumberInput number: self class defaultPortNumber.
 			self beInDisconnectedMode ]
@@ -126,6 +127,9 @@ CMGameInitializerPresenter >> initializePresenters [
 		addColumn: (SpStringTableColumn
 			title: 'Name'
 			evaluated: [ :client | client name ]);
+		addColumn: (SpStringTableColumn
+			title: 'Role'
+			evaluated: [ :client | client role roleName ]);
 		yourself.
 	
 	statusLabel := self newLabel.
