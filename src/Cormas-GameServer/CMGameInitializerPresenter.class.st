@@ -124,8 +124,8 @@ CMGameInitializerPresenter >> initializePresenters [
 			beNotExpandable;
 			yourself);
 		addColumn: (SpStringTableColumn
-			title: 'ID'
-			evaluated: [ :client | client id ]);
+			title: 'Name'
+			evaluated: [ :client | client name ]);
 		yourself.
 	
 	statusLabel := self newLabel.

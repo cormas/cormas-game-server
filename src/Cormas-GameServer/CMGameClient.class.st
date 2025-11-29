@@ -2,7 +2,6 @@ Class {
 	#name : 'CMGameClient',
 	#superclass : 'Object',
 	#instVars : [
-		'id',
 		'name',
 		'webSocket'
 	],
@@ -10,16 +9,16 @@ Class {
 	#package : 'Cormas-GameServer'
 }
 
-{ #category : 'accessing' }
-CMGameClient >> id [
+{ #category : 'connection open/close' }
+CMGameClient >> disconnect [
 
-	^ id
+	webSocket close
 ]
 
-{ #category : 'accessing' }
-CMGameClient >> id: anObject [
+{ #category : 'testing' }
+CMGameClient >> isConnected [
 
-	id := anObject
+	^ webSocket isNotNil and: [ webSocket isConnected ]
 ]
 
 { #category : 'accessing' }
@@ -34,10 +33,12 @@ CMGameClient >> name: anObject [
 	name := anObject
 ]
 
-{ #category : 'accessing' }
-CMGameClient >> webSocket [
+{ #category : 'protocol' }
+CMGameClient >> sendMessage: aString [
 
-	^ webSocket
+	webSocket sendMessage: aString
+
+	
 ]
 
 { #category : 'accessing' }
