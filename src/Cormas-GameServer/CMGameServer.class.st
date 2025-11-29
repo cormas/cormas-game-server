@@ -215,6 +215,12 @@ CMGameServer >> initialize [
 	whenClientDisconnectedBlock := [ :clientId | self log: ('Client disconnected: ', clientId asString) ].
 ]
 
+{ #category : 'testing' }
+CMGameServer >> isRunning [
+
+	^ server isNotNil
+]
+
 { #category : 'logging' }
 CMGameServer >> log: anObject [
 
@@ -225,6 +231,12 @@ CMGameServer >> log: anObject [
 CMGameServer >> parseJSON: aString [
 
 	^ STONJSON fromString: aString
+]
+
+{ #category : 'accessing' }
+CMGameServer >> portNumber [
+
+	^ server port
 ]
 
 { #category : 'as yet unclassified' }
