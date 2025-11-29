@@ -196,23 +196,10 @@ CMGameServer >> closeAllClients [
 
 { #category : 'as yet unclassified' }
 CMGameServer >> handleWebSocket: ws [
-	| name newClient |
+	| name |
 	name := self clientNameFrom: ws ifAbsent: [ UUID new asString ].
 	
-	"Register or replace existing socket for this clientId"
-	mutex critical: [ 
-		clients at: name ifPresent: [ :previousClient |
-			[ previousClient disconnect ] onErrorDo: [ :e |
-				self log: 'Error closing previous socket for ', name, ': ', e printString ] ].
-		
-		newClient := CMGameClient new
-			name: name;
-			webSocket: ws;
-			yourself.
-			
-		clients at: name put: newClient ].
-	
-	[ whenClientConnectedBlock value: newClient ] onErrorDo: [ :e | self log: e ].
+	self registerWebSocket: ws forClientNamed: name.
 
 	"Main read loop for this connection"
 	[ 
@@ -280,6 +267,27 @@ CMGameServer >> parseJSON: aString [
 CMGameServer >> portNumber [
 
 	^ server port
+]
+
+{ #category : 'as yet unclassified' }
+CMGameServer >> registerWebSocket: aWebSocket forClientNamed: aString [
+
+	| newClient |
+
+	"Register or replace existing socket for this clientId"
+	mutex critical: [ 
+		clients at: aString ifPresent: [ :previousClient |
+			[ previousClient disconnect ] onErrorDo: [ :e |
+				self log: 'Error closing previous socket for ', aString, ': ', e printString ] ].
+		
+		newClient := CMGameClient new
+			name: aString;
+			webSocket: aWebSocket;
+			yourself.
+			
+		clients at: aString put: newClient ].
+	
+	[ whenClientConnectedBlock value: newClient ] onErrorDo: [ :e | self log: e ].
 ]
 
 { #category : 'as yet unclassified' }
