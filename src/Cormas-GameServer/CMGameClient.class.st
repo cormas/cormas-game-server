@@ -35,6 +35,12 @@ CMGameClient >> isConnected [
 	^ webSocket isNotNil and: [ webSocket isConnected ]
 ]
 
+{ #category : 'logging' }
+CMGameClient >> log: anObject [
+
+	anObject asString traceCr
+]
+
 { #category : 'accessing' }
 CMGameClient >> name [
 
@@ -60,11 +66,27 @@ CMGameClient >> role: aRole [
 ]
 
 { #category : 'protocol' }
-CMGameClient >> sendMessage: aString [
+CMGameClient >> sendMessage: aDictionaryOrString [
 
-	webSocket sendMessage: aString
+	| message |
+	message := self toJSONString: aDictionaryOrString.
+
+	[ webSocket sendMessage: message ] onErrorDo: [ :e |
+		self log: ('Send error to ', name, ': ', e printString) ]
 
 	
+]
+
+{ #category : 'as yet unclassified' }
+CMGameClient >> sendRegisteredMessage [
+
+	self sendMessage: '{"type": "registered", "payload": {"name": "', name, '"}}'.
+]
+
+{ #category : 'as yet unclassified' }
+CMGameClient >> toJSONString: anObject [
+
+	^ STONJSON toString: anObject
 ]
 
 { #category : 'accessing' }

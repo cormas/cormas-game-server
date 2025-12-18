@@ -108,14 +108,10 @@ byId(''login'').addEventListener(''submit'', (e) => {
 
 { #category : 'as yet unclassified' }
 CMGameServer >> broadcast: aDictionaryOrString [
-
-	| message |
-	message := self toJSONString: aDictionaryOrString.
 	
 	mutex critical: [ 
 		self clients do: [ :client | 
-			[ client sendMessage: message ] onErrorDo: [ :e |
-				self log: ('Broadcast error to ', client id asString, ': ', e printString) ] ] ]
+			client sendMessage: aDictionaryOrString ] ]
 ]
 
 { #category : 'as yet unclassified' }
@@ -162,7 +158,7 @@ CMGameServer >> clientNameFrom: ws ifAbsent: anAbsentBlock [
 			^ self ].
 		
 	helloMsg := [ self parseJSON: helloRaw ] onErrorDo: [ :err |
-		[ ws sendMessage: 'Bad JSON in handshape' ] onErrorDo: [ :e | self log: e ].
+		[ ws sendMessage: 'Bad JSON in handshake' ] onErrorDo: [ :e | self log: e ].
 		ws close.
 		^ self ].
 	
@@ -198,6 +194,7 @@ CMGameServer >> closeAllClients [
 CMGameServer >> handleWebSocket: ws [
 	| client |
 	client := self newClientFromWebSocket: ws.
+	client sendRegisteredMessage.
 
 	"Main read loop for this connection"
 	[ 
@@ -292,16 +289,6 @@ CMGameServer >> portNumber [
 	^ server port
 ]
 
-{ #category : 'as yet unclassified' }
-CMGameServer >> send: aDictionaryOrString toClient: aClient [
-
-	| message |
-	message := self toJSONString: aDictionaryOrString.
-
-	[ aClient sendMessage: message ] onErrorDo: [ :e |
-		self log: ('Send error to ', aClient name, ': ', e printString) ]
-]
-
 { #category : 'accessing' }
 CMGameServer >> startOn: aPortNumber [
 	"Start HTTP server with a WebSocket endpoint at /ws."
@@ -330,12 +317,6 @@ CMGameServer >> stop [
 	[ self closeAllClients ] onErrorDo: [ :e | self log: e ].
 	server stop.
 	server := nil.
-]
-
-{ #category : 'as yet unclassified' }
-CMGameServer >> toJSONString: anObject [
-
-	^ STONJSON toString: anObject
 ]
 
 { #category : 'enumerating' }
