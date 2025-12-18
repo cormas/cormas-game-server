@@ -10,6 +10,14 @@ Class {
 	#package : 'Cormas-GameServer'
 }
 
+{ #category : 'instance creation' }
+CMGameClient class >> fromWebSocket: aSocket [
+
+	^ self new
+		webSocket: aSocket;
+		yourself
+]
+
 { #category : 'connection open/close' }
 CMGameClient >> disconnect [
 
@@ -51,6 +59,58 @@ CMGameClient >> name [
 CMGameClient >> name: anObject [
 
 	name := anObject
+]
+
+{ #category : 'parsing' }
+CMGameClient >> parseJSON: aString [
+
+	^ STONJSON fromString: aString
+]
+
+{ #category : 'protocol' }
+CMGameClient >> readMessage [
+	
+	| raw data |
+	
+	raw := webSocket readMessage. "blocks until a frame arrives or socket closes"
+	
+	data := [ self parseJSON: raw ] onErrorDo: [ :e |
+		self log: ('Bad JSON from ', name, ': ', e printString).
+		nil ].
+	
+	^ data
+]
+
+{ #category : 'as yet unclassified' }
+CMGameClient >> readNameFromHandshake [
+	"Expect a hello frame with a name, with timeout"
+	
+	| helloRaw helloMsg |
+	
+	helloRaw := [ webSocket readMessage ]
+		valueWithin: 5 seconds
+		onTimeout: [
+			[ webSocket sendMessage: 'Handshake timeout: send {"type":"bonjour","name":"..."} first' ]
+				onErrorDo: [ :e | self log: e ].
+			webSocket close.
+			^ self ].
+		
+	helloMsg := [ self parseJSON: helloRaw ] onErrorDo: [ :err |
+		[ webSocket sendMessage: 'Bad JSON in handshake' ] onErrorDo: [ :e | self log: e ].
+		webSocket close.
+		^ self ].
+	
+	((helloMsg at: 'type' ifAbsent: [ nil ]) = 'bonjour') ifFalse: [ 
+		[ webSocket sendMessage: 'First message must be {"type":"bonjour","name":"..."}' ]
+			onErrorDo: [ :e | self log: e ].
+		webSocket close.
+		^ self ].
+	
+	name := helloMsg at: 'name' ifAbsent: [
+		[ webSocket sendMessage: 'First message must be {"type":"bonjour","name":"..."}' ]
+			onErrorDo: [ :e | self log: e ].
+		webSocket close.
+		^ self ]
 ]
 
 { #category : 'accessing' }

@@ -114,69 +114,6 @@ CMGameServer >> broadcast: aDictionaryOrString [
 			client sendMessage: aDictionaryOrString ] ]
 ]
 
-{ #category : 'as yet unclassified' }
-CMGameServer >> clientIdFrom: ws ifAbsent: anAbsentBlock [
-
-	"Expect a hello frame with an id, with timeout"
-	| helloRaw helloMsg |
-	
-	helloRaw := [ ws readMessage ]
-		valueWithin: 5 seconds
-		onTimeout: [
-			[ ws sendMessage: 'Handshake timeout: send {"type":"bonjour","id":"..."} first' ]
-				onErrorDo: [ :e | self log: e ].
-			ws close.
-			^ self ].
-		
-	helloMsg := [ self parseJSON: helloRaw ] onErrorDo: [ :err |
-		[ ws sendMessage: 'Bad JSON in handshape' ] onErrorDo: [ :e | self log: e ].
-		ws close.
-		^ self ].
-	
-	((helloMsg at: 'type' ifAbsent: [ nil ]) = 'bonjour') ifFalse: [ 
-		[ ws sendMessage: 'First message must be {"type":"bonjour","id":"..."}' ]
-			onErrorDo: [ :e | self log: e ].
-		ws close.
-		^ self ].
-	
-	^ helloMsg at: 'id' ifAbsent: [ UUID new asString ]
-	
-]
-
-{ #category : 'as yet unclassified' }
-CMGameServer >> clientNameFrom: ws ifAbsent: anAbsentBlock [
-
-	"Expect a hello frame with a name, with timeout"
-	| helloRaw helloMsg name |
-	
-	helloRaw := [ ws readMessage ]
-		valueWithin: 5 seconds
-		onTimeout: [
-			[ ws sendMessage: 'Handshake timeout: send {"type":"bonjour","name":"..."} first' ]
-				onErrorDo: [ :e | self log: e ].
-			ws close.
-			^ self ].
-		
-	helloMsg := [ self parseJSON: helloRaw ] onErrorDo: [ :err |
-		[ ws sendMessage: 'Bad JSON in handshake' ] onErrorDo: [ :e | self log: e ].
-		ws close.
-		^ self ].
-	
-	((helloMsg at: 'type' ifAbsent: [ nil ]) = 'bonjour') ifFalse: [ 
-		[ ws sendMessage: 'First message must be {"type":"bonjour","name":"..."}' ]
-			onErrorDo: [ :e | self log: e ].
-		ws close.
-		^ self ].
-	
-	name := helloMsg at: 'name' ifAbsent: [
-		[ ws sendMessage: 'First message must be {"type":"bonjour","name":"..."}' ]
-			onErrorDo: [ :e | self log: e ].
-		ws close.
-		^ self ].
-	
-	^ name
-]
-
 { #category : 'accessing' }
 CMGameServer >> clients [
 
@@ -193,25 +130,22 @@ CMGameServer >> closeAllClients [
 { #category : 'as yet unclassified' }
 CMGameServer >> handleWebSocket: ws [
 	| client |
-	client := self newClientFromWebSocket: ws.
-	client sendRegisteredMessage.
+	
+	client := CMGameClient fromWebSocket: ws.
+	client readNameFromHandshake.
 
-	"Main read loop for this connection"
-	[ 
-		[ ws isConnected ] whileTrue: [ 
-			| raw data |
-			raw := ws readMessage. "blocks until a frame arrives or socket closes"
-			data := [ self parseJSON: raw ] onErrorDo: [ :e |
-				self log: ('Bad JSON from ', client name, ': ', e printString).
-				nil ].
+	"Register or replace existing socket for this clientId"
+	mutex critical: [ 
+		clients at: client name ifPresent: [ :previousClient |
+			[ previousClient disconnect ] onErrorDo: [ :e |
+				self log: 'Error closing previous socket for ', client name, ': ', e printString ] ].
 			
-			data ifNotNil: [ whenDataReceivedBlock value: data value: client ] ]
-	] ensure: [ 
-		"Unregister only if this ws is still the current one for clientId (avoid racing with a fast reconnection)"
-		mutex critical: [ 
-			clients at: client name ifPresent: [ :aClient |
-				clients removeKey: aClient name.
-				[ whenClientDisconnectedBlock value: aClient ] onErrorDo: [ :e | self log: e ] ] ] ]
+		clients at: client name put: client ].
+	
+	[ whenClientConnectedBlock value: client ] onErrorDo: [ :e | self log: e ].
+	
+	client sendRegisteredMessage.
+	self readLoopForClient: client
 ]
 
 { #category : 'accessing' }
@@ -252,41 +186,28 @@ CMGameServer >> log: anObject [
 	anObject asString traceCr
 ]
 
-{ #category : 'as yet unclassified' }
-CMGameServer >> newClientFromWebSocket: aWebSocket [
-	"Extract client name from web socket hello message. If client with this name exists, disconnect it. Create a new client and return it"
-
-	| name newClient |
-	
-	name := self clientNameFrom: aWebSocket ifAbsent: [ UUID new asString ].
-
-	"Register or replace existing socket for this clientId"
-	mutex critical: [ 
-		clients at: name ifPresent: [ :previousClient |
-			[ previousClient disconnect ] onErrorDo: [ :e |
-				self log: 'Error closing previous socket for ', name, ': ', e printString ] ].
-		
-		newClient := CMGameClient new
-			name: name;
-			webSocket: aWebSocket;
-			yourself.
-			
-		clients at: name put: newClient ].
-	
-	[ whenClientConnectedBlock value: newClient ] onErrorDo: [ :e | self log: e ].
-	^ newClient 
-]
-
-{ #category : 'parsing' }
-CMGameServer >> parseJSON: aString [
-
-	^ STONJSON fromString: aString
-]
-
 { #category : 'accessing' }
 CMGameServer >> portNumber [
 
 	^ server port
+]
+
+{ #category : 'as yet unclassified' }
+CMGameServer >> readLoopForClient: aClient [
+
+	| data |
+
+	"Main read loop for this connection"
+	[ 
+		[ aClient isConnected ] whileTrue: [ 
+			data := aClient readMessage. "blocks until a frame arrives or socket closes"
+			data ifNotNil: [ whenDataReceivedBlock value: data value: aClient ] ]
+	] ensure: [ 
+		"Unregister only if this ws is still the current one for clientId (avoid racing with a fast reconnection)"
+		mutex critical: [ 
+			clients at: aClient name ifPresent: [ :c |
+				clients removeKey: c name.
+				[ whenClientDisconnectedBlock value: c ] onErrorDo: [ :e | self log: e ] ] ] ]
 ]
 
 { #category : 'accessing' }
