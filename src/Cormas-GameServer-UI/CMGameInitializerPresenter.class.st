@@ -10,8 +10,8 @@ Class {
 		'connectedClientsTable',
 		'startGameButton'
 	],
-	#category : 'Cormas-GameServer',
-	#package : 'Cormas-GameServer'
+	#category : 'Cormas-GameServer-UI',
+	#package : 'Cormas-GameServer-UI'
 }
 
 { #category : 'accessing' }
