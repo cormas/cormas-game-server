@@ -21,7 +21,7 @@ CMGamePresenter >> game [
 { #category : 'instance creation' }
 CMGamePresenter >> initializeSimulationInit: anInitSelector control: aControlSelector [
 	"TODO: For now, we duplicate this method only to change the CMSimulation class to CMGame class. But later we should refactor it to move other parts like parameter or random seed initialization into other methods and reduce duplication"
-	simulation := CMGame for: modelClass.
+	simulation := modelClass gameClass for: modelClass.
 
 	modelClass parameters do: [ :parameter |
 		simulation initialParameterValues at: parameter put: parameter value ].
