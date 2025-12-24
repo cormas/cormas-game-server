@@ -22,13 +22,14 @@ CMGame >> initialize [
 	server := CMGameServer new.
 ]
 
-{ #category : 'initialization' }
-CMGame >> initializeGame [
-
-	self initializeSimulation
-]
-
 { #category : 'accessing' }
 CMGame >> server [
 	^ server
+]
+
+{ #category : 'initialization' }
+CMGame >> startGame [
+
+	self initializeSimulation.
+	server broadcastStartGame
 ]

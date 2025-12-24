@@ -26,7 +26,7 @@ CMGameInitializerPresenter class >> example [
 	| game |
 	game := (CMGame for: CMMockModel)
 		activeInitSelector: #initFixed;
-		initializeGame.
+		startGame.
 		
 	(self on: game) open
 ]
@@ -73,7 +73,7 @@ CMGameInitializerPresenter >> buildRolesMenu [
 			name: role roleName;
 			action: [
 				connectedClientsTable selectedItem role: role.
-				self update ] ] ].
+				self showConnectedClients ] ] ].
 
 	^ rolesMenu
 ]
@@ -98,6 +98,7 @@ CMGameInitializerPresenter >> connectPresenters [
 	game server whenClientDisconnectedDo: [ :client | self showConnectedClients ].
 
 	inspectServerButton action: [ game server inspect ].
+	startGameButton action: [ game startGame ]
 ]
 
 { #category : 'layout' }
@@ -159,7 +160,9 @@ CMGameInitializerPresenter >> initializePresenters [
 		hideColumnHeaders;
 		addColumn: (SpImageTableColumn new
 			width: 20;
-			evaluated: [ :client | self iconNamed: #testGreen ];
+			evaluated: [ :client | self iconNamed: (client isConnected
+				ifTrue: [ #testGreen ]
+				ifFalse: [ #testRed ]) ];
 			beNotExpandable;
 			yourself);
 		addColumn: (SpStringTableColumn
@@ -197,7 +200,11 @@ CMGameInitializerPresenter >> setModelBeforeInitialization: aGame [
 { #category : 'as yet unclassified' }
 CMGameInitializerPresenter >> showConnectedClients [
 
-	connectedClientsTable items: game server clients
+	connectedClientsTable items: game server clients.
+	
+	(game server clients allSatisfy: #hasRole)
+		ifTrue: [ startGameButton enable ]
+		ifFalse: [ startGameButton disable ]
 ]
 
 { #category : 'as yet unclassified' }

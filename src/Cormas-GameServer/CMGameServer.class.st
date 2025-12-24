@@ -114,6 +114,13 @@ CMGameServer >> broadcast: aDictionaryOrString [
 			client sendMessage: aDictionaryOrString ] ]
 ]
 
+{ #category : 'as yet unclassified' }
+CMGameServer >> broadcastStartGame [
+
+	mutex critical: [ 
+		self clients do: #sendGameStartedMessage ]
+]
+
 { #category : 'accessing' }
 CMGameServer >> clients [
 
@@ -125,6 +132,23 @@ CMGameServer >> closeAllClients [
 	mutex critical: [ 
 		self clients do: [ :client | [ client disconnect ] onErrorDo: [ :e | self log: e ] ].
 		clients removeAll ]
+]
+
+{ #category : 'as yet unclassified' }
+CMGameServer >> handleData: aDictionary forClient: aClient [
+	
+	| type |
+	
+	type := aDictionary at: 'type' ifAbsent: [ 
+		self flag: 'TODO'. "send error message to client becuase type is not optional"
+		^ self ].
+	
+	type = 'ping' ifTrue: [ 
+		aClient sendPongMessage.
+		"^ self" ].
+
+	"other message types here"
+	whenDataReceivedBlock value: aDictionary value: aClient
 ]
 
 { #category : 'as yet unclassified' }
@@ -169,9 +193,9 @@ CMGameServer >> initialize [
 	htmlDirectory := 'html/'.
 	
 	"Use setter method to replace this block with a custom callback to process the game input"
-	whenDataReceivedBlock := [ :data :client | self log: ('[',  client name asString, '] :', data asString) ].
-	whenClientConnectedBlock := [ :client | self log: ('Client connected: ', client id asString) ].
-	whenClientDisconnectedBlock := [ :client | self log: ('Client disconnected: ', client id asString) ].
+	whenDataReceivedBlock := [ :data :client | self log: ('[',  client name, ' @ ', Time now asString, '] :', data asString) ].
+	whenClientConnectedBlock := [ :client | self log: ('Client connected: ', client name) ].
+	whenClientDisconnectedBlock := [ :client | self log: ('Client disconnected: ', client name) ].
 ]
 
 { #category : 'testing' }
@@ -199,14 +223,19 @@ CMGameServer >> readLoopForClient: aClient [
 
 	"Main read loop for this connection"
 	[ 
-		[ aClient isConnected ] whileTrue: [ 
-			data := aClient readMessage. "blocks until a frame arrives or socket closes"
-			data ifNotNil: [ whenDataReceivedBlock value: data value: aClient ] ]
+		[ aClient isConnected ] whileTrue: [
+			[
+				data :=aClient readMessage. "blocks until a frame arrives or socket closes"
+				data ifNotNil: [ self handleData: data forClient: aClient ]
+			] on: ConnectionTimedOut do: [
+				"This happens when client is inactive for a long time. In this case, we disconnect the client
+				and exit the loop"
+				aClient disconnect ] ]
 	] ensure: [ 
 		"Unregister only if this ws is still the current one for clientId (avoid racing with a fast reconnection)"
 		mutex critical: [ 
 			clients at: aClient name ifPresent: [ :c |
-				clients removeKey: c name.
+				"clients removeKey: c name."
 				[ whenClientDisconnectedBlock value: c ] onErrorDo: [ :e | self log: e ] ] ] ]
 ]
 

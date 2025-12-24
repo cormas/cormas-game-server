@@ -125,6 +125,12 @@ CMGameClient >> role: aRole [
 	role := aRole
 ]
 
+{ #category : 'as yet unclassified' }
+CMGameClient >> sendGameStartedMessage [
+
+	self sendMessage: '{"type": "gameStarted", "payload": {"role": "', role roleName, '"}}'.
+]
+
 { #category : 'protocol' }
 CMGameClient >> sendMessage: aDictionaryOrString [
 
@@ -135,6 +141,12 @@ CMGameClient >> sendMessage: aDictionaryOrString [
 		self log: ('Send error to ', name, ': ', e printString) ]
 
 	
+]
+
+{ #category : 'as yet unclassified' }
+CMGameClient >> sendPongMessage [
+
+	self sendMessage: '{"type": "pong"}'.
 ]
 
 { #category : 'as yet unclassified' }
