@@ -24,7 +24,8 @@ CMGameInitializerPresenter class >> defaultPortNumber [
 CMGameInitializerPresenter class >> example [
 	<example>
 	| game |
-	game := (CMGame for: CMMockModel)
+	
+	game := (CMGame for: CMMockModel new)
 		activeInitSelector: #initFixed;
 		startGame.
 		

@@ -1,7 +1,7 @@
-Extension { #name : 'CMAbstractModel' }
+Extension { #name : 'CMModel' }
 
 { #category : '*Cormas-GameServer' }
-CMAbstractModel class >> gameClass [
+CMModel class >> gameClass [
 
 	^ self package classes
 		detect: [ :aClass | aClass inheritsFrom: CMGame ]
@@ -9,7 +9,7 @@ CMAbstractModel class >> gameClass [
 ]
 
 { #category : '*Cormas-GameServer' }
-CMAbstractModel >> respondToClient: aDictionary [
+CMModel >> respondToClient: aDictionary [
 	"Override this method to specify the response to a player action received over the network. aDictionary represents a JSON input"
 	
 	aDictionary traceCr

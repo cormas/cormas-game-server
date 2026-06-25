@@ -6,6 +6,15 @@ Class {
 }
 
 { #category : 'examples' }
+CMGamePresenter class >> example [
+	<example>
+	
+	CMGameApplication new
+		cormasModel: CMMockModel new;
+		run
+]
+
+{ #category : 'examples' }
 CMGamePresenter >> example [
 	<script: 'self example'>
 ]
@@ -15,38 +24,38 @@ CMGamePresenter >> game [
 	"Game can be seen as a simulation... bla bla bla
 	And game is a subclass of simulation
 	So we use the same variable here"
-	^ simulation
+	^ self application simulation
 ]
 
 { #category : 'instance creation' }
 CMGamePresenter >> initializeSimulationInit: anInitSelector control: aControlSelector [
 	"TODO: For now, we duplicate this method only to change the CMSimulation class to CMGame class. But later we should refactor it to move other parts like parameter or random seed initialization into other methods and reduce duplication"
-	simulation := modelClass gameClass for: modelClass.
+	| simulation parameters |
+	
+	"Save parameters from previous simulation to copy their values and start with the same values
+	in the new simulation. This is important if we want to set some parameters before initialization"
+	parameters := self cormasModel allParameters.
 
-	modelClass parameters do: [ :parameter |
-		simulation initialParameterValues at: parameter put: parameter value ].
+	simulation := self cormasModel class gameClass for: self cormasModel.
+	self application simulation: simulation.
 
 	simulation
 		activeInitSelector: anInitSelector;
 		activeControlSelector: aControlSelector.
 		
-	simulation stopWhen: stopConditionPresenter condition.
+	simulation stopWhen: stopConditionPresenter buildConditionBlock.
 		
-	self flag: 'TODO'.
+	randomNumbersPresenter apply.
 	
-	"modelInitializationSettings isFixRandomSeed ifTrue: [ 
-		simulation randomSeed: modelInitializationSettings randomSeed.
-		simulation shouldReleaseRandomSeedAfterInitialization:
-			modelInitializationSettings isReleaseRandomSeedAfterInitialization ]."
-		
 	simulation initializeSimulation.
-	simulationRunner simulation: simulation
+	simulationRunner updateWithSimulation.
+	randomNumbersPresenter showCurrentSettings
 ]
 
 { #category : 'initialization' }
 CMGamePresenter >> presenterWindowTitle [
 
-	^ modelClass modelName, ' - Game'
+	^ self cormasModel class modelName, ' - Game'
 ]
 
 { #category : 'as yet unclassified' }

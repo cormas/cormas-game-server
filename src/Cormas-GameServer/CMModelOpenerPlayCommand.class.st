@@ -8,13 +8,9 @@ Class {
 { #category : 'action' }
 CMModelOpenerPlayCommand >> action [
 
-	| presenter |
-	presenter:=  CMGamePresenter
-		forModelClass: owner cormasModelClass
-		translator: translator.
-			
-	presenter open.
-	presenter window centered
+	CMGameApplication new
+		cormasModel: owner cormasModelClass new;
+		run.
 ]
 
 { #category : 'accessing' }
