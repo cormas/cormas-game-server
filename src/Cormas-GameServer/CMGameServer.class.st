@@ -71,7 +71,7 @@ byId(''login'').addEventListener(''submit'', (e) => {
   ws = new WebSocket(url);
 
   ws.addEventListener(''open'', () => {
-    ws.send(JSON.stringify({ type: ''hello'', id: name }));
+    ws.send(JSON.stringify({ type: ''bonjour'', name: name }));
   });
 
   ws.addEventListener(''message'', (ev) => {
@@ -253,7 +253,7 @@ CMGameServer >> startOn: aPortNumber [
 		wsDelegate handleRequest: request ].
 	
 	dispatcher map: '/' to: [ :request :response |
-		response entity: (ZnEntity html: (self htmlFrom: 'login.html')) ].
+		response entity: (ZnEntity html: self class loginPageHtml "(self htmlFrom: 'login.html')") ].
 	
 	server := ZnServer startOn: aPortNumber.
 	self log: ('Started a server at localhost:', aPortNumber asString).
