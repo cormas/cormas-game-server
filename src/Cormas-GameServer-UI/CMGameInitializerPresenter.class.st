@@ -8,7 +8,8 @@ Class {
 		'connectButton',
 		'inspectServerButton',
 		'connectedClientsTable',
-		'startGameButton'
+		'startGameButton',
+		'stopAllButton'
 	],
 	#category : 'Cormas-GameServer-UI',
 	#package : 'Cormas-GameServer-UI'
@@ -124,6 +125,10 @@ CMGameInitializerPresenter >> defaultLayout [
 			add: connectButton;
 			add: inspectServerButton width: 40;
 			yourself) expand: false;
+			add: (SpBoxLayout newLeftToRight
+			spacing: 2;
+			add: stopAllButton;
+			yourself) expand: false;
 		add: (SpBoxLayout newTopToBottom
 			add: 'Connected clients' expand: false;
 			add: connectedClientsTable;
@@ -188,8 +193,14 @@ CMGameInitializerPresenter >> initializePresenters [
 		label: 'Start Game';
 		icon: CMIcons playIcon;
 		yourself.
-		
+	stopAllButton := self newButton
+		label: 'Stop all running servers';
+		icon: CMIcons stopIcon;
+		action: [ self stopAllServers ];
+		yourself.
 	self initializeFromExistingServer
+		
+
 ]
 
 { #category : 'accessing - model' }
@@ -213,6 +224,14 @@ CMGameInitializerPresenter >> startServer [
 
 	game server startOn: portNumberInput number.
 	self beInConnectedMode
+]
+
+{ #category : 'as yet unclassified' }
+CMGameInitializerPresenter >> stopAllServers [
+	CMGameServer allInstances do: [ :s |
+		[ s stop ] onErrorDo: [ :e | s log: e ] ].
+	[ self stopServer ] onErrorDo: [ :e | game server log: e ].
+	self showConnectedClients
 ]
 
 { #category : 'as yet unclassified' }
