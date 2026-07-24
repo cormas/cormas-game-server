@@ -228,9 +228,9 @@ CMGameInitializerPresenter >> startServer [
 
 { #category : 'as yet unclassified' }
 CMGameInitializerPresenter >> stopAllServers [
-	CMGameServer allInstances do: [ :s |
+	(CMGameServer allSubInstances , CMGameServer allInstances) asSet do: [ :s |
 		[ s stop ] onErrorDo: [ :e | s log: e ] ].
-	[ self stopServer ] onErrorDo: [ :e | game server log: e ].
+	 [ self stopServer ] onErrorDo: [ :e | game server log: e ].
 	self showConnectedClients
 ]
 
