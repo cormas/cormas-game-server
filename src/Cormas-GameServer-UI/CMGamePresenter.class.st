@@ -49,6 +49,7 @@ CMGamePresenter >> initializeSimulationInit: anInitSelector control: aControlSel
 	
 	simulation initializeSimulation.
 	simulationRunner updateWithSimulation.
+	simulation runnerPresenter: simulationRunner. 
 	randomNumbersPresenter showCurrentSettings
 ]
 
