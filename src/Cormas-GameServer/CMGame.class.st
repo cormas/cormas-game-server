@@ -11,8 +11,8 @@ Class {
 
 { #category : 'as yet unclassified' }
 CMGame >> availableRoles [
-
-	^ cormasModel class package definedClasses select: [ :each | each inheritsFrom: CMGameRole ]
+	^ (self class package definedClasses select: [ :each | each inheritsFrom: CMGameRole ]) asArray
+		sort: [ :a :b | a name <= b name ]
 ]
 
 { #category : 'initialization' }
