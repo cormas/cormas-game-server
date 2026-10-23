@@ -121,6 +121,11 @@ CMGameServer >> broadcastStartGame [
 		self clients do: #sendGameStartedMessage ]
 ]
 
+{ #category : 'as yet unclassified' }
+CMGameServer >> clientRegistered: aClient [
+	
+]
+
 { #category : 'accessing' }
 CMGameServer >> clients [
 
@@ -154,21 +159,22 @@ CMGameServer >> handleData: aDictionary forClient: aClient [
 { #category : 'as yet unclassified' }
 CMGameServer >> handleWebSocket: ws [
 	| client |
-	
 	client := CMGameClient fromWebSocket: ws.
 	client readNameFromHandshake.
 
-	"Register or replace existing socket for this clientId"
-	mutex critical: [ 
-		clients at: client name ifPresent: [ :previousClient |
-			[ previousClient disconnect ] onErrorDo: [ :e |
-				self log: 'Error closing previous socket for ', client name, ': ', e printString ] ].
-			
+	"Failed handshake: no phantom player"
+	client name isEmpty ifTrue: [ ^ self ].
+
+	mutex critical: [
+		clients at: client name ifPresent: [ :previous |
+			"Same name: the player is coming back, keep the role"
+			client role: previous role.
+			[ previous disconnect ] onErrorDo: [ :e | self log: e ] ].
 		clients at: client name put: client ].
-	
+
 	[ whenClientConnectedBlock value: client ] onErrorDo: [ :e | self log: e ].
-	
 	client sendRegisteredMessage.
+	[ self clientRegistered: client ] onErrorDo: [ :e | self log: e ].
 	self readLoopForClient: client
 ]
 

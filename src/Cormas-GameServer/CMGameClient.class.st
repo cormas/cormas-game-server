@@ -34,6 +34,7 @@ CMGameClient >> hasRole [
 CMGameClient >> initialize [
 
 	super initialize.
+	name := ''.
 	role := CMGameNoRole
 ]
 
