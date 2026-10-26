@@ -203,6 +203,13 @@ CMGameInitializerPresenter >> initializePresenters [
 
 ]
 
+{ #category : 'initialization' }
+CMGameInitializerPresenter >> initializeWindow: aWindowPresenter [
+	super initializeWindow: aWindowPresenter.
+	aWindowPresenter whenClosedDo: [
+		[ game server stop ] onErrorDo: [ :e | game server log: e ] ]
+]
+
 { #category : 'accessing - model' }
 CMGameInitializerPresenter >> setModelBeforeInitialization: aGame [
 
@@ -221,8 +228,8 @@ CMGameInitializerPresenter >> showConnectedClients [
 
 { #category : 'as yet unclassified' }
 CMGameInitializerPresenter >> startServer [
-
 	game server startOn: portNumberInput number.
+	portNumberInput number: game server portNumber.
 	self beInConnectedMode
 ]
 

@@ -250,21 +250,27 @@ CMGameServer >> startOn: aPortNumber [
 	"Start HTTP server with a WebSocket endpoint at /ws."
 	| wsDelegate dispatcher |
 	server ifNotNil: [ self error: 'Already running!' ].
-	
+
 	dispatcher := ZnDispatcherDelegate new.
-	
 	wsDelegate := ZnWebSocketDelegate map: '/' to: [ :ws | self handleWebSocket: ws ].
-	
 	dispatcher map: '/ws' to: [ :request :response |
 		wsDelegate handleRequest: request ].
-	
 	dispatcher map: '/' to: [ :request :response |
-		response entity: (ZnEntity html: self class loginPageHtml "(self htmlFrom: 'login.html')") ].
-	
-	server := ZnServer startOn: aPortNumber.
-	self log: ('Started a server at localhost:', aPortNumber asString).
-	
-	server delegate: dispatcher.
+		response entity: (ZnEntity html: self class loginPageHtml) ].
+
+	server := self startZincFrom: aPortNumber.
+	self log: 'Started a server at localhost:' , server port printString.
+	server delegate: dispatcher
+]
+
+{ #category : 'as yet unclassified' }
+CMGameServer >> startZincFrom: aPortNumber [
+	"Start on the first free port from aPortNumber"
+	aPortNumber to: aPortNumber + 20 do: [ :port |
+		[ ^ ZnServer startOn: port ]
+			on: Error
+			do: [ :e | self log: 'Port ' , port printString , ' is busy, trying the next one' ] ].
+	self error: 'No free port between ' , aPortNumber printString , ' and ' , (aPortNumber + 20) printString
 ]
 
 { #category : 'accessing' }
@@ -273,6 +279,13 @@ CMGameServer >> stop [
 	[ self closeAllClients ] onErrorDo: [ :e | self log: e ].
 	server stop.
 	server := nil.
+]
+
+{ #category : 'as yet unclassified' }
+CMGameServer >> stopOtherServersOn: aPortNumber [
+	CMGameServer allSubInstances do: [ :each |
+		(each ~~ self and: [ each isRunning and: [ each portNumber = aPortNumber ] ])
+			ifTrue: [ [ each stop ] onErrorDo: [ :e | self log: e ] ] ]
 ]
 
 { #category : 'enumerating' }

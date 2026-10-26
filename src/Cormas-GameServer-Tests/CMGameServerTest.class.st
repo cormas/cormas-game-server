@@ -91,6 +91,20 @@ CMGameServerTest >> testSilentPhoneIsNotRegistered [
 ]
 
 { #category : 'tests' }
+CMGameServerTest >> testStartingStopsOldServerOnSamePort [
+	| old new |
+	old := CMGameServer new.
+	new := CMGameServer new.
+	old startOn: 18082.
+	[ new startOn: 18082.
+	self deny: old isRunning.
+	self assert: new isRunning ]
+		ensure: [
+			old stop.
+			new stop ]
+]
+
+{ #category : 'tests' }
 CMGameServerTest >> testWrongFirstMessageIsNotRegistered [
 	| ws |
 	ws := CMFakeWebSocket new.
