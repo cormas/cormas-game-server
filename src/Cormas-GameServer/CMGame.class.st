@@ -15,6 +15,11 @@ CMGame >> availableRoles [
 		sort: [ :a :b | a name <= b name ]
 ]
 
+{ #category : 'testing' }
+CMGame >> canStart [
+	^ server clients notEmpty and: [ server clients allSatisfy: #hasRole ]
+]
+
 { #category : 'initialization' }
 CMGame >> initialize [
 

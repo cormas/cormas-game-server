@@ -218,10 +218,8 @@ CMGameInitializerPresenter >> setModelBeforeInitialization: aGame [
 
 { #category : 'as yet unclassified' }
 CMGameInitializerPresenter >> showConnectedClients [
-
 	connectedClientsTable items: game server clients.
-	
-	(game server clients allSatisfy: #hasRole)
+	game canStart
 		ifTrue: [ startGameButton enable ]
 		ifFalse: [ startGameButton disable ]
 ]
