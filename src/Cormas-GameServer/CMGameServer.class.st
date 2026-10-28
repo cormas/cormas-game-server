@@ -61,6 +61,12 @@ function addLog(x){
 
 let ws = null;
 
+let token = localStorage.getItem(''cm.token'') || '''';
+if(!token){
+  token = Array.from(crypto.getRandomValues(new Uint32Array(4)), n => n.toString(16)).join('''');
+  localStorage.setItem(''cm.token'', token);
+}
+
 byId(''login'').addEventListener(''submit'', (e) => {
   e.preventDefault();
   const name = nameInput.value.trim();
@@ -71,7 +77,7 @@ byId(''login'').addEventListener(''submit'', (e) => {
   ws = new WebSocket(url);
 
   ws.addEventListener(''open'', () => {
-    ws.send(JSON.stringify({ type: ''bonjour'', name: name }));
+    ws.send(JSON.stringify({ type: ''bonjour'', name: name, token: token }));
   });
 
   ws.addEventListener(''message'', (ev) => {
@@ -82,7 +88,10 @@ byId(''login'').addEventListener(''submit'', (e) => {
         show(''ok'', `Welcome, ${msgObj.id}! Connected.`);
         addLog(''CONNECTED as '' + msgObj.id);
       } else if(msgObj.type === ''rejected'' && msgObj.reason === ''name-taken''){
-        show(''error'', ''This name is already taken. Choose another.'');
+        show(''error'', ''This name is already used by a connected player. Choose another.'');
+        ws.close();
+      } else if(msgObj.type === ''replaced''){
+        show(''error'', ''This name was opened in another tab or window.'');
         ws.close();
       } else if(msgObj.type === ''error''){
         show(''error'', ''Error: '' + (msgObj.reason || ''unknown''));
@@ -158,19 +167,34 @@ CMGameServer >> handleData: aDictionary forClient: aClient [
 
 { #category : 'as yet unclassified' }
 CMGameServer >> handleWebSocket: ws [
-	| client |
+	| client accepted |
 	client := CMGameClient fromWebSocket: ws.
 	client readNameFromHandshake.
 
 	"Failed handshake: no phantom player"
 	client name isEmpty ifTrue: [ ^ self ].
 
-	mutex critical: [
-		clients at: client name ifPresent: [ :previous |
-			"Same name: the player is coming back, keep the role"
-			client role: previous role.
-			[ previous disconnect ] onErrorDo: [ :e | self log: e ] ].
-		clients at: client name put: client ].
+	accepted := mutex critical: [
+		| previous previousConnected sameBrowser |
+		previous := clients at: client name ifAbsent: [ client ].
+		previousConnected := previous ~~ client and: [ previous isConnected ].
+		sameBrowser := (previous handshake at: 'token' ifAbsent: [ '' ])
+			= (client handshake at: 'token' ifAbsent: [ '' ]).
+		((self refuses: client) or: [ previousConnected and: [ sameBrowser not ] ])
+			ifTrue: [ false ]
+			ifFalse: [
+				"Same name: the player is coming back, keep the role"
+				client role: previous role.
+				previousConnected ifTrue: [
+					previous sendMessage: (Dictionary new at: 'type' put: 'replaced'; yourself).
+					[ previous disconnect ] onErrorDo: [ :e | self log: e ] ].
+				clients at: client name put: client.
+				true ] ].
+
+	accepted ifFalse: [
+		client sendMessage: (Dictionary new at: 'type' put: 'rejected'; at: 'reason' put: 'name-taken'; yourself).
+		[ client disconnect ] onErrorDo: [ :e | self log: e ].
+		^ self ].
 
 	[ whenClientConnectedBlock value: client ] onErrorDo: [ :e | self log: e ].
 	client sendRegisteredMessage.
@@ -243,6 +267,11 @@ CMGameServer >> readLoopForClient: aClient [
 			clients at: aClient name ifPresent: [ :c |
 				"clients removeKey: c name."
 				[ whenClientDisconnectedBlock value: c ] onErrorDo: [ :e | self log: e ] ] ] ]
+]
+
+{ #category : 'as yet unclassified' }
+CMGameServer >> refuses: aClient [
+	^ false
 ]
 
 { #category : 'accessing' }

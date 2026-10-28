@@ -4,7 +4,8 @@ Class {
 	#instVars : [
 		'name',
 		'webSocket',
-		'role'
+		'role',
+		'handshake'
 	],
 	#category : 'Cormas-GameServer',
 	#package : 'Cormas-GameServer'
@@ -24,6 +25,11 @@ CMGameClient >> disconnect [
 	webSocket close
 ]
 
+{ #category : 'accessing' }
+CMGameClient >> handshake [
+	^ handshake
+]
+
 { #category : 'testing' }
 CMGameClient >> hasRole [
 
@@ -32,10 +38,10 @@ CMGameClient >> hasRole [
 
 { #category : 'initialization' }
 CMGameClient >> initialize [
-
 	super initialize.
 	name := ''.
-	role := CMGameNoRole
+	role := CMGameNoRole.
+	handshake := Dictionary new
 ]
 
 { #category : 'testing' }
@@ -106,7 +112,7 @@ CMGameClient >> readNameFromHandshake [
 			onErrorDo: [ :e | self log: e ].
 		webSocket close.
 		^ self ].
-	
+	handshake := helloMsg.
 	name := helloMsg at: 'name' ifAbsent: [
 		[ webSocket sendMessage: 'First message must be {"type":"bonjour","name":"..."}' ]
 			onErrorDo: [ :e | self log: e ].
